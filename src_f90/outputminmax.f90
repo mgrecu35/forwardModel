@@ -1,0 +1,56 @@
+module outputminmax
+
+      real *4                   :: surfaceAirPressure_min = 300.
+      real *4                   :: surfaceAirPressure_max = 1100.
+      real *4                   :: surfaceAirTemperature_min = 150.
+      real *4                   :: surfaceAirTemperature_max = 350.
+      real *4                   :: surfaceVaporDensity_min = 0.
+      real *4                   :: surfaceVaporDensity_max = 60.
+      real *4                   :: skinTemperature_min = 150.
+      real *4                   :: skinTemperature_max = 350.
+      real *4                   :: airPressure_min = 50.
+      real *4                   :: airPressure_max = 1100.
+      real *4                   :: airTemperature_min = 150.
+      real *4                   :: airTemperature_max = 350.
+      real *4                   :: vaporDensity_min = 0.
+      real *4                   :: vaporDensity_max = 60.
+      real *4                   :: cloudLiqWaterCont_min = 0.
+      real *4                   :: cloudLiqWaterCont_max = 60.
+      real *4                   :: cloudIceWaterCont_min = 0.
+      real *4                   :: cloudIceWaterCont_max = 18.
+      real *4                   :: precipTotPSDparamLowLogNw_min = 4.
+      real *4                   :: precipTotPSDparamLowLogNw_max = 11.
+      real *4                   :: precipTotPSDparamLowMu_min = -3.
+      real *4                   :: precipTotPSDparamLowMu_max = 10.
+      real *4                   :: precipTotPSDparamHighDm_min = 0.
+      real *4                   :: precipTotPSDparamHighDm_max = 20.
+      real *4                   :: precipTotWaterCont_min = 0.
+      real *4                   :: precipTotWaterCont_max = 18.
+      real *4                   :: precipTotWaterContSigma_min = 0.
+      real *4                   :: precipTotWaterContSigma_max = 18.
+      real *4                   :: precipTotRate_min = 0.
+      real *4                   :: precipTotRate_max = 300.
+      real *4                   :: precipTotRateSigma_min = 0.
+      real *4                   :: precipTotRateSigma_max = 300.
+      real *4                   :: liqMassFracTrans_min = 0.
+      real *4                   :: liqMassFracTrans_max = 1.
+      real *4                   :: liqRateFracTrans_min = 0.
+      real *4                   :: liqRateFracTrans_max = 1.
+      real *4                   :: surfPrecipTotRate_min = 0.
+      real *4                   :: surfPrecipTotRate_max = 300.
+      real *4                   :: surfPrecipTotRateSigma_min = 0.
+      real *4                   :: surfPrecipTotRateSigma_max = 300.
+      real *4                   :: surfLiqRateFrac_min = 0.
+      real *4                   :: surfLiqRateFrac_max = 1.
+      real *4                   :: tenMeterWindSpeed_min = 0.
+      real *4                   :: tenMeterWindSpeed_max = 100.
+      real *4                   :: surfEmissivity_min = 0.0  !applied to output
+      real *4                   :: surfEmissivity_max = 1.1  !applied to output
+      real *4                   :: simulatedBrightTemp_min = 20.
+      real *4                   :: simulatedBrightTemp_max = 350.
+      real *4                   :: pia_min = 0.
+      real *4                   :: pia_max = 1000.
+      real *4                   :: correctedReflectFactor_min = -20.
+      real *4                   :: correctedReflectFactor_max = 100.
+
+end module outputminmax
