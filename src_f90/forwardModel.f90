@@ -271,7 +271,8 @@ end subroutine reflectivity_ka
 
 
 subroutine reflectivity_ku(rwc1,swc1,wv1,dn1,temp,press,dr,sl,nz,zku_m,&
-     zku_out,attku_out, piaku, kext, salb, asym, kext1, salb1, asym1, pRate)
+     zku_out,attku_out, piaku, kext, salb, asym, kext1, salb1, asym1, pRate,&
+     dm_out)
   use tablep2
   use tables2
   implicit none
@@ -283,7 +284,7 @@ subroutine reflectivity_ku(rwc1,swc1,wv1,dn1,temp,press,dr,sl,nz,zku_m,&
   real :: graupCoeff(2)
   real,intent(out) :: zku_m(nz)
   real :: attku
-  real,intent(out) :: piaku
+  real,intent(out) :: piaku, dm_out(nz)
   real :: zkur_11, attkur_11, zkus_11, attkus_11
   integer :: k1
   real :: drwc
@@ -297,6 +298,7 @@ subroutine reflectivity_ku(rwc1,swc1,wv1,dn1,temp,press,dr,sl,nz,zku_m,&
   real :: kextt, salbt, asymt
   real :: kextt1, salbt1, asymt1
   integer :: ibin2
+  real :: dm_r, dm_s, dm_t
   graupCoeff=(/13.63604457, 28.58466471/)
 
   piaku=0
@@ -330,10 +332,11 @@ subroutine reflectivity_ku(rwc1,swc1,wv1,dn1,temp,press,dr,sl,nz,zku_m,&
         kextt = kextt + kextr1
         salbt = salbt + kextr1*salbr1
         asymt = asymt + kextr1*salbr1*asymr1
-
+        dm_t=dmR(ibin)*rwc1(k)
      else
         zkur_1=0
         attkur_1=0
+        dm_t=0.
      endif
      
      if (swc1(k)>1e-2) then
@@ -359,7 +362,8 @@ subroutine reflectivity_ku(rwc1,swc1,wv1,dn1,temp,press,dr,sl,nz,zku_m,&
         asymt1 = asymt1 + kexts1*salbs1*asyms1
 
         attkus_1=attkug(ibin)*n1*10**dn1(k)
-        
+        !dm_s=dmG(imbin)
+        dm_t=dm_t+dmR(ibin)*swc1(k)
         if(swc1(k)/n1 < gwc(1)) then
            zkus_1=log10(swc1(k)/n1)*graupCoeff(1)+ &
                 graupCoeff(2)+10*log10(n1)+10*dn1(k)
@@ -368,7 +372,7 @@ subroutine reflectivity_ku(rwc1,swc1,wv1,dn1,temp,press,dr,sl,nz,zku_m,&
         zkus_1=0
         attkus_1=0
      endif
-
+     dm_out(k)=dm_t/(rwc1(k)+swc1(k)+1e-5)
      piaku=piaku+(attkus_1+attkur_1)*dr
      zku_m(k)=10*log10(10**(0.1*zkus_1)+10**(0.1*zkur_1))-piaku
      piaku=piaku+(attkus_1+attkur_1)*dr
