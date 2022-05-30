@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 
+                      
 def torch_summarize(model, show_weights=True, show_parameters=True):
     """Summarizes torch model by showing trainable parameters and weights."""
     tmpstr = model.__class__.__name__ + ' (\n'
@@ -40,13 +41,14 @@ class Sequence(nn.Module):
         super(Sequence, self).__init__()
         self.lstm_pia = nn.LSTMCell(ninp, nh)
         self.linear_pia = nn.Linear(nh, nout)
-        self.lstm1 = nn.LSTMCell(ninp+1, nh)
+        self.lstm1 = nn.LSTMCell(ninp+ipia, nh)
         self.lstm2 = nn.LSTMCell(nh, nh)
         self.linear = nn.Linear(nh, nout)
         self.nh=nh
         self.ninp=ninp
         self.nout=nout
-        self.ipia=0
+        self.ipia=ipia
+        print(ninp)
     #@torch.jit.script    
     def forward(self, input, future = 0):
         outputs = []
@@ -66,16 +68,21 @@ class Sequence(nn.Module):
             output_pias=torch.abs(output_pias)
             lstm_pia=output_pias.sum(axis=1)
             output_pias=torch.multiply(output_pias,input[:,-1,None])
-        
-        for i,input_t in enumerate(input[:,:-1].split(self.ninp, dim=1)):
-            if self.ipia==1:
-                input_t=torch.cat([input_t,output_pias[:,i:i+1]],dim=1)
-            h_t, c_t = self.lstm1(input_t, (h_t, c_t)) #(ns,self.nh)
-            h_t2, c_t2 = self.lstm2(h_t, (h_t2, c_t2))
-            output = self.linear(h_t2)
-            outputs += [output]
+
         if self.ipia==1:
+            for i,input_t in enumerate(input[:,:-1].split(self.ninp, dim=1)):
+                input_t=torch.cat([input_t,output_pias[:,i:i+1]],dim=1)
+                h_t, c_t = self.lstm1(input_t, (h_t, c_t)) #(ns,self.nh)
+                h_t2, c_t2 = self.lstm2(h_t, (h_t2, c_t2))
+                output = self.linear(h_t2)
+                outputs += [output]
             outputs+=[output_pia]
+        else:
+            for i,input_t in enumerate(input[:,:].split(self.ninp, dim=1)):
+                h_t, c_t = self.lstm1(input_t, (h_t, c_t)) #(ns,self.nh)
+                h_t2, c_t2 = self.lstm2(h_t, (h_t2, c_t2))
+                output = self.linear(h_t2)
+                outputs += [output]
         outputs = torch.cat(outputs, dim=1)
         return outputs
 
@@ -92,7 +99,7 @@ class MyCustomDataset(Dataset):
         return (self.input[index,:], self.target[index,:])
 
     def __len__(self):
-        return len(input_)
+        return self.input.shape[0]
 
     
 from netCDF4 import Dataset
@@ -102,9 +109,25 @@ files=sorted(glob.glob("wrf*nc"))
 input_=[]
 target=[]
 
-idf=0
-ipia=0
+np.random.seed(0)
+torch.manual_seed(0)
+                  
+#idf=0
+#ipia=0
 
+from sklearn.preprocessing import StandardScaler
+import sys, argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--idf', type=int, default=0, help='dual frequency?')
+parser.add_argument('--ipia', type=int, default=0, help='srt pia?')
+opt = parser.parse_args()
+print(opt)
+idf=opt.idf
+ipia=opt.ipia
+print(idf,ipia)
+idf,ipia=0,1
+#stop
 for f in files[:2]:
     fh=Dataset(f)
     zKu=fh["zKu"][:]
@@ -140,9 +163,10 @@ for f in files[:2]:
         if ipia==1:
             t[:-1]=pRate[i,::-1]
             t[-1]=1.0
-        target.append(t)
-
-from sklearn.preprocessing import StandardScaler
+            target.append(t)
+        else:
+            t[:]=pRate[i,::-1]
+            target.append(t)
 
 stdScaler_input=StandardScaler()
 stdScaler_target=StandardScaler()
@@ -155,14 +179,14 @@ stdScaler_input.fit(input_)
 stdScaler_target.fit(target)
 a=np.nonzero(r<0.5)
 b=np.nonzero(r>0.5)
-input_n=torch.tensor(stdScaler_input.transform(input_))
-target_n=torch.tensor(stdScaler_target.transform(target))
+input_n=stdScaler_input.transform(input_)
+target_n=stdScaler_target.transform(target)
 
-t_input_n=input_n[a[0],:]
-t_target_n=target_n[a[0],:]
+t_input_n=torch.tensor(input_n[a[0],:])
+t_target_n=torch.tensor(target_n[a[0],:])
 
-v_input_n=input_n[b[0],:]
-v_target_n=target_n[b[0],:]
+v_input_n=torch.tensor(input_n[b[0],:])
+v_target_n=torch.tensor(target_n[b[0],:])
                       
 training_data=MyCustomDataset(t_input_n,t_target_n)
 
@@ -171,7 +195,7 @@ train_dataloader = DataLoader(training_data, batch_size=64, shuffle=False)
 np.random.seed(0)
 torch.manual_seed(0)
 
-lstm_model = Sequence(2,25,1)
+lstm_model = Sequence(idf+1,25,1,ipia)
 lstm_model.double()
 
 criterion = nn.MSELoss()
@@ -193,66 +217,12 @@ for i in range(30):
         optimizer.step(closure)
     print(np.mean(loss_av))
     
-#test_dataloader = DataLoader(test_data, batch_size=128, shuffle=True)
-#data = torch.load('traindata.pt')
-#input = torch.from_numpy(data[3:, :-1])
-#target = torch.from_numpy(data[3:, 1:])
-#
 
 
-#stop
-if __name__ == '__main2__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--steps', type=int, default=15, help='steps to run')
-    opt = parser.parse_args()
-    # set random seed to 0
-    np.random.seed(0)
-    torch.manual_seed(0)
-    # load data and make training set
-    data = torch.load('traindata.pt')
-    input = torch.from_numpy(data[3:, :-1])
-    target = torch.from_numpy(data[3:, 1:])
-    test_input = torch.from_numpy(data[:3, :-1])
-    test_target = torch.from_numpy(data[:3, 1:])
-    # build the model
+torch.save(lstm_model.state_dict(),"lstm_model_%2.2i_%2.2i.pt"%(idf,ipia))
 
+y_=lstm_model(v_input_n)
+y_=y_[:,-2].detach().numpy()
+target2_=v_target_n[:,-2].detach().numpy()
+print(np.corrcoef(y_,target2_))
 
-
-    #begin to train
-    for i in range(10):
-        print('STEP: ', i)
-        for x,y in train_dataloader:
-            print(x.shape)
-            def closure():
-                optimizer.zero_grad()
-                out = seq(x)
-                loss = criterion(out, y)
-                print('loss:', loss.item())
-                loss.backward()
-                return loss
-            optimizer.step(closure)
-        # begin to predict, no need to track gradient here
-        with torch.no_grad():
-            future = 1000
-            pred = seq(test_input, future=future)
-            loss = criterion(pred[:, :-future], test_target)
-            print('test loss:', loss.item())
-            y = pred.detach().numpy()
-        # draw the result
-        plt.figure(figsize=(30,10))
-        plt.title('Predict future values for time sequences\n(Dashlines are predicted values)', fontsize=30)
-        plt.xlabel('x', fontsize=20)
-        plt.ylabel('y', fontsize=20)
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        def draw(yi, color):
-            plt.plot(np.arange(input.size(1)), yi[:input.size(1)], color, linewidth = 2.0)
-            plt.plot(np.arange(input.size(1), input.size(1) + future), yi[input.size(1):], color + ':', linewidth = 2.0)
-        draw(y[0], 'r')
-        draw(y[1], 'g')
-        draw(y[2], 'b')
-        plt.savefig('predict%d.pdf'%i)
-        plt.close()
-
-
-torch.save(lstm_model.state_dict(),"lstm_model_DPIA.pt")
